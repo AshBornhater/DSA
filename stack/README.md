@@ -1,58 +1,31 @@
-# Infix to Postfix Converter (Java)
+# Infix to Postfix Converter 
 
-Program kecil buat tugas Struktur Data: mengubah ekspresi infix (yang biasa kita tulis, kayak `A + B * C`) jadi postfix (`A B C * +`) menggunakan stack.
+A small program for a Data Structures assignment that converts infix expressions (the ones we normally write, such as `A + B * C`) into postfix expressions (`A B C * +`) using a stack.
 
-Stack-nya sengaja dibuat sendiri dari linked list, bukan pakai `java.util.Stack`, supaya implementasi push/pop/peek-nya kelihatan jelas. Sesuai batasan tugas, satu-satunya library Java yang dipakai adalah `Scanner` untuk membaca input, dan itu pun hanya di `Main.java`. Tidak ada `ArrayList`, `List`, `StringBuilder`, `Character`, atau koleksi lain di dalam program.
+The stack is implemented manually using a linked list instead of `java.util.Stack`, so the implementation of `push()`, `pop()`, and `peek()` is clearly demonstrated.
 
-## Isi Folder
+To comply with the assignment requirements, the only Java library used is `Scanner` for reading user input, and it is only used in `Main.java`. The program does not use `ArrayList`, `List`, `StringBuilder`, `Character`, or any other collection classes.
 
-| File | Fungsi |
+## Folder Contents
+
+| File | Description |
 | --- | --- |
-| `Node.java` | Node linked list, isinya satu `char` dan pointer `next` |
-| `Stack.java` | Stack dasar (push, pop, peek, isEmpty) di atas linked list |
-| `InfixToPostfix.java` | Logika utama: pembacaan operand, validasi, dan konversi |
-| `Main.java` | Program interaktif, baca input lewat `Scanner` lalu cetak hasilnya |
+| `Node.java` | Linked list node containing a single `char` and a `next` pointer |
+| `Stack.java` | Basic stack implementation using a linked list (`push`, `pop`, `peek`, `isEmpty`) |
+| `InfixToPostfix.java` | Core logic for reading operands, validating expressions, and performing the conversion |
+| `Main.java` | Interactive program that reads user input using `Scanner` and prints the result |
 
-## Fitur
+## Features
 
-- Operator yang didukung: `+`, `-`, `*`, `/`, `^`
-- Tiga jenis kurung: `( )`, `[ ]`, `{ }`, dan pasangannya dicek satu per satu
-- Operand boleh lebih dari satu karakter, jadi `12` atau `3.5` diperlakukan sebagai satu operand
-- Spasi di input diabaikan
-- Ekspresi yang salah ditolak dengan pesan error yang jelas, bukan hasil ngawur
+- Supported operators: `+`, `-`, `*`, `/`, `^`
+- Supports three types of brackets: `( )`, `[ ]`, `{ }`, with each opening bracket checked against its corresponding closing bracket
+- Supports multi-character operands, so `12` or `3.5` is treated as a single operand
+- Whitespace in the input is ignored
+- Invalid expressions are rejected with clear error messages instead of producing incorrect results
 
-Program mengecek dulu apakah susunan operand/operator masuk akal sebelum konversi dijalankan, jadi kasus seperti `A + * B`, `(A+B`, atau `A+B)` langsung ditolak.
+The program validates the expression structure before performing the conversion, so invalid expressions such as `A + * B`, `(A+B`, or `A+B)` are rejected immediately.
 
-## Cara Menjalankan
-
-Butuh JDK 8 atau lebih baru (program hanya memakai fitur Java dasar dan `try-with-resources`). Masuk ke folder ini lalu:
-
-```bash
-javac *.java
-java Main
-```
-
-Contoh sesi:
-
-```
-=== Infix to Postfix Conversion ===
-Operator: + - * / ^
-Brackets: ( ) [ ] { }
-
-Input infix expression (q = quit): A+B*C
-
-Infix  : A+B*C
-Postfix: A B C * +
-
-Input infix expression (q = quit): 5*(10+8)+9^3
-
-Infix  : 5*(10+8)+9^3
-Postfix: 5 10 8 + * 9 3 ^ +
-
-Input infix expression (q = quit): q
-```
-
-Beberapa contoh lain:
+Additional examples:
 
 | Infix | Postfix |
 | --- | --- |
@@ -62,38 +35,66 @@ Beberapa contoh lain:
 | `{a+(b*c)}^2` | `a b c * + 2 ^` |
 | `12+3.5*4` | `12 3.5 4 * +` |
 
-## Cara Kerjanya
+## How It Works
 
-### 1. Membaca operand tanpa token list
+### 1. Reading Operands Without a Token List
 
-`convert()` dan `validateOrder()` membaca string infix langsung dari kiri ke kanan. Helper `isDigit()` dan `isLetter()` mengecek rentang ASCII, `isOperandChar()` menambahkan titik desimal, dan `isWhitespace()` mengenali spasi/tab/baris baru. `operandEnd()` mengembalikan indeks setelah karakter terakhir operand, sehingga `12` atau `3.5` dibaca sebagai satu unit tanpa perlu `ArrayList` atau `StringBuilder`.
+`convert()` and `validateOrder()` read the infix expression directly from left to right.
 
-### 2. Validasi urutan
+The helper methods `isDigit()` and `isLetter()` check ASCII character ranges. `isOperandChar()` additionally handles decimal points, while `isWhitespace()` recognizes spaces, tabs, and newline characters.
 
-`validateOrder()` memakai satu flag `expectingOperand` yang berganti-ganti: setelah operand harusnya operator/kurung tutup, setelah operator harusnya operand, dan setelah kurung buka harusnya operand. Pelanggaran dilaporkan lewat helper `misplaced()`. Flag `hasToken` menolak input kosong, dan pengecekan terakhir menolak ekspresi yang berakhir dengan operator atau kurung buka.
+`operandEnd()` returns the index immediately after the last character of an operand. This allows values such as `12` or `3.5` to be treated as a single unit without requiring `ArrayList` or `StringBuilder`.
 
-### 3. Konversi (shunting-yard)
+### 2. Expression Validation
 
-Inti algoritmanya ada di `convert()`:
+`validateOrder()` uses a single `expectingOperand` flag that alternates between states:
 
-- Operand langsung ditulis ke output.
-- Kurung buka di-push ke stack.
-- Kurung tutup: pop stack dan tulis ke output sampai ketemu kurung buka, lalu kurung buka itu di-pop dan dicek pasangannya.
-- Operator: selama operator di puncak stack punya prioritas lebih tinggi (atau sama), pop dan tulis ke output. Setelah itu operator baru di-push.
-- Di akhir, semua isi stack dikeluarkan. Kalau masih ada kurung buka di situ, berarti kurungnya tidak pernah ditutup.
+- After an operand, an operator or closing bracket is expected.
+- After an operator, an operand or opening bracket is expected.
+- After an opening bracket, an operand or another opening bracket is expected.
 
-Prioritas operator: `^` paling tinggi (3), lalu `*` dan `/` (2), lalu `+` dan `-` (1). Untuk `^` dipakai aturan right-associative, jadi `A^B^C` dibaca `A^(B^C)`, bukan `(A^B)^C`.
+Invalid positions are reported through the `misplaced()` helper method.
 
-Output postfix dirapikan dengan `removeTrailingSpace()`, yang hanya memakai `charAt()` dan `substring()`.
+The `hasToken` flag rejects empty input, while the final validation checks prevent expressions from ending with an operator or an opening bracket.
 
-## Error yang Ditangani
+### 3. Conversion (Shunting-yard Algorithm)
 
-- Input kosong
-- Karakter yang tidak dikenal
-- Operand/operator salah posisi, misal `A + * B`
-- Ekspresi berakhir dengan operator atau kurung buka
-- Kurung tutup tanpa pasangan
-- Kurung buka yang tidak ditutup
-- Pasangan kurung tidak cocok, misal `(A+B]`
+The main conversion logic is implemented in `convert()`:
 
-Semua error dilempar sebagai `IllegalArgumentException` dari `InfixToPostfix`, lalu ditangkap di `Main` dan ditampilkan sebagai `Invalid expression: ...` supaya program tidak mati.
+- Operands are directly appended to the output.
+- Opening brackets are pushed onto the stack.
+- When a closing bracket is encountered, operators are popped from the stack and appended to the output until the corresponding opening bracket is found. The opening bracket is then popped, and its matching pair is checked.
+- When an operator is encountered, operators at the top of the stack with higher precedence (or equal precedence when applicable) are popped and appended to the output. The current operator is then pushed onto the stack.
+- At the end of the expression, all remaining operators are popped from the stack and appended to the output. If an opening bracket remains, it means the bracket was never closed.
+
+Operator precedence:
+
+| Operator | Precedence | Associativity |
+| --- | --- | --- |
+| `^` | 3 (Highest) | Right-to-left |
+| `*`, `/` | 2 | Left-to-right |
+| `+`, `-` | 1 (Lowest) | Left-to-right |
+
+The `^` operator is **right-associative**, meaning `A^B^C` is evaluated as `A^(B^C)`, not `(A^B)^C`.
+
+The postfix output is cleaned up using `removeTrailingSpace()`, which only uses `charAt()` and `substring()`.
+
+## Error Handling
+
+The program handles the following errors:
+
+- Empty input
+- Unknown characters
+- Incorrect operand/operator placement, such as `A + * B`
+- Expressions ending with an operator or opening bracket
+- Closing brackets without matching opening brackets
+- Unclosed opening brackets
+- Mismatched bracket pairs, such as `(A+B]`
+
+All errors are thrown as `IllegalArgumentException` from `InfixToPostfix`, then caught in `Main.java` and displayed using the format:
+
+```text
+Invalid expression: ...
+```
+
+This prevents the program from terminating unexpectedly when invalid expressions are entered.
