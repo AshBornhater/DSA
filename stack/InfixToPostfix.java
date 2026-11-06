@@ -1,6 +1,3 @@
-import java.util.ArrayList;
-import java.util.List;
-
 public class InfixToPostfix {
 
     private static boolean isOperator(char c) {
@@ -15,11 +12,6 @@ public class InfixToPostfix {
         return c == ')' || c == ']' || c == '}';
     }
 
-    private static boolean isOperand(String token) {
-        char first = token.charAt(0);
-        return Character.isLetterOrDigit(first) || first == '.';
-    }
-
     private static boolean bracketsMatch(char open, char close) {
         return (open == '(' && close == ')')
                 || (open == '[' && close == ']')
@@ -27,12 +19,18 @@ public class InfixToPostfix {
     }
 
     private static int precedence(char op) {
-        return switch (op) {
-            case '^' -> 3;
-            case '*', '/' -> 2;
-            case '+', '-' -> 1;
-            default -> 0;
-        };
+        switch (op) {
+            case '^':
+                return 3;
+            case '*':
+            case '/':
+                return 2;
+            case '+':
+            case '-':
+                return 1;
+            default:
+                return 0;
+        }
     }
 
     private static boolean shouldPop(char newOp, char topOp) {
@@ -45,52 +43,72 @@ public class InfixToPostfix {
         return precedence(topOp) >= precedence(newOp);
     }
 
-    private static List<String> tokenize(String infix) {
-        List<String> tokens = new ArrayList<>();
-        StringBuilder operand = new StringBuilder();
-        for (int i = 0; i < infix.length(); i++) {
+    private static boolean isDigit(char c) {
+        return c >= '0' && c <= '9';
+    }
+
+    private static boolean isLetter(char c) {
+        return (c >= 'a' && c <= 'z') || (c >= 'A' && c <= 'Z');
+    }
+
+    private static boolean isOperandChar(char c) {
+        return isLetter(c) || isDigit(c) || c == '.';
+    }
+
+    private static boolean isWhitespace(char c) {
+        return c == ' ' || c == '\t' || c == '\n' || c == '\r';
+    }
+
+    private static int operandEnd(String infix, int start) {
+        int end = start;
+        while (end < infix.length()
+                && isOperandChar(infix.charAt(end))) {
+            end++;
+        }
+        return end;
+    }
+
+    private static void misplaced(char c) {
+        throw new IllegalArgumentException(
+                "Misplaced operand/operator near '" + c + "'.");
+    }
+
+    private static void validateOrder(String infix) {
+        boolean expectingOperand = true;
+        boolean hasToken = false;
+        int i = 0;
+        while (i < infix.length()) {
             char c = infix.charAt(i);
-            if (Character.isLetterOrDigit(c) || c == '.') {
-                operand.append(c);
+            if (isWhitespace(c)) {
+                i++;
                 continue;
             }
-            if (operand.length() > 0) {
-                tokens.add(operand.toString());
-                operand.setLength(0);
-            }
-            if (Character.isWhitespace(c)) {
-                continue;
-            }
-            if (!isOperator(c) && !isOpening(c) && !isClosing(c)) {
+            hasToken = true;
+            if (isOperandChar(c)) {
+                if (!expectingOperand) {
+                    misplaced(c);
+                }
+                i = operandEnd(infix, i);
+                expectingOperand = false;
+            } else if (isOpening(c)) {
+                if (!expectingOperand) {
+                    misplaced(c);
+                }
+                i++;
+            } else if (isClosing(c) || isOperator(c)) {
+                if (expectingOperand) {
+                    misplaced(c);
+                }
+                i++;
+                expectingOperand = isOperator(c);
+            } else {
                 throw new IllegalArgumentException(
                         "Unknown character: '" + c + "'");
             }
-            tokens.add(String.valueOf(c));
         }
-        if (operand.length() > 0) {
-            tokens.add(operand.toString());
-        }
-        return tokens;
-    }
-
-    private static void validateOrder(List<String> tokens) {
-        if (tokens.isEmpty()) {
+        if (!hasToken) {
             throw new IllegalArgumentException(
                     "Expression must not be empty.");
-        }
-        boolean expectingOperand = true;
-        for (String token : tokens) {
-            char c = token.charAt(0);
-            boolean startsOperand = isOperand(token) || isOpening(c);
-            if (startsOperand != expectingOperand) {
-                throw new IllegalArgumentException(
-                        "Misplaced operand/operator near '" + token + "'.");
-            }
-            if (isOperand(token) || isClosing(c)) {
-                expectingOperand = false;
-            } else if (isOperator(c)) {
-                expectingOperand = true;
-            }
         }
         if (expectingOperand) {
             throw new IllegalArgumentException(
@@ -100,24 +118,30 @@ public class InfixToPostfix {
     }
 
     public static String convert(String infix) {
-        List<String> tokens = tokenize(infix);
-        validateOrder(tokens);
+        validateOrder(infix);
 
         Stack stack = new Stack();
-        StringBuilder postfix = new StringBuilder();
+        String postfix = "";
+        int i = 0;
 
-        for (String token : tokens) {
-            char c = token.charAt(0);
+        while (i < infix.length()) {
+            char c = infix.charAt(i);
 
-            if (isOperand(token)) {
-                postfix.append(token).append(' ');
+            if (isWhitespace(c)) {
+                i++;
+
+            } else if (isOperandChar(c)) {
+                int end = operandEnd(infix, i);
+                postfix = postfix + infix.substring(i, end) + ' ';
+                i = end;
 
             } else if (isOpening(c)) {
                 stack.push(c);
+                i++;
 
             } else if (isClosing(c)) {
                 while (!stack.isEmpty() && !isOpening(stack.peek())) {
-                    postfix.append(stack.pop()).append(' ');
+                    postfix = postfix + stack.pop() + ' ';
                 }
                 if (stack.isEmpty()) {
                     throw new IllegalArgumentException(
@@ -128,12 +152,14 @@ public class InfixToPostfix {
                     throw new IllegalArgumentException("Bracket '" + open
                             + "' does not match '" + c + "'.");
                 }
+                i++;
 
             } else {
                 while (!stack.isEmpty() && shouldPop(c, stack.peek())) {
-                    postfix.append(stack.pop()).append(' ');
+                    postfix = postfix + stack.pop() + ' ';
                 }
                 stack.push(c);
+                i++;
             }
         }
 
@@ -143,8 +169,17 @@ public class InfixToPostfix {
                 throw new IllegalArgumentException("Opening bracket '"
                         + remaining + "' has no match.");
             }
-            postfix.append(remaining).append(' ');
+            postfix = postfix + remaining + ' ';
         }
-        return postfix.toString().trim();
+
+        return removeTrailingSpace(postfix);
+    }
+
+    private static String removeTrailingSpace(String text) {
+        int end = text.length();
+        while (end > 0 && text.charAt(end - 1) == ' ') {
+            end--;
+        }
+        return text.substring(0, end);
     }
 }

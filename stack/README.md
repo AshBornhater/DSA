@@ -2,7 +2,7 @@
 
 Program kecil buat tugas Struktur Data: mengubah ekspresi infix (yang biasa kita tulis, kayak `A + B * C`) jadi postfix (`A B C * +`) menggunakan stack.
 
-Stack-nya sengaja dibuat sendiri dari linked list, bukan pakai `java.util.Stack`, supaya implementasi push/pop/peek-nya kelihatan jelas.
+Stack-nya sengaja dibuat sendiri dari linked list, bukan pakai `java.util.Stack`, supaya implementasi push/pop/peek-nya kelihatan jelas. Sesuai batasan tugas, satu-satunya library Java yang dipakai adalah `Scanner` untuk membaca input, dan itu pun hanya di `Main.java`. Tidak ada `ArrayList`, `List`, `StringBuilder`, `Character`, atau koleksi lain di dalam program.
 
 ## Isi Folder
 
@@ -10,8 +10,8 @@ Stack-nya sengaja dibuat sendiri dari linked list, bukan pakai `java.util.Stack`
 | --- | --- |
 | `Node.java` | Node linked list, isinya satu `char` dan pointer `next` |
 | `Stack.java` | Stack dasar (push, pop, peek, isEmpty) di atas linked list |
-| `InfixToPostfix.java` | Logika utama: tokenizing, validasi, dan konversi |
-| `Main.java` | Program interaktif, baca input dari keyboard lalu cetak hasilnya |
+| `InfixToPostfix.java` | Logika utama: pembacaan operand, validasi, dan konversi |
+| `Main.java` | Program interaktif, baca input lewat `Scanner` lalu cetak hasilnya |
 
 ## Fitur
 
@@ -21,11 +21,11 @@ Stack-nya sengaja dibuat sendiri dari linked list, bukan pakai `java.util.Stack`
 - Spasi di input diabaikan
 - Ekspresi yang salah ditolak dengan pesan error yang jelas, bukan hasil ngawur
 
-Yang terakhir itu cukup penting. Program mengecek dulu apakah susunan operand/operator masuk akal sebelum konversi dijalankan, jadi kasus seperti `A + * B`, `(A+B`, atau `A+B)` langsung ditolak.
+Program mengecek dulu apakah susunan operand/operator masuk akal sebelum konversi dijalankan, jadi kasus seperti `A + * B`, `(A+B`, atau `A+B)` langsung ditolak.
 
 ## Cara Menjalankan
 
-Butuh JDK (program ini ditulis pakai Java modern, ada `switch expression` di `precedence`, jadi minimal Java 14). Masuk ke folder ini lalu:
+Butuh JDK 8 atau lebih baru (program hanya memakai fitur Java dasar dan `try-with-resources`). Masuk ke folder ini lalu:
 
 ```bash
 javac *.java
@@ -44,10 +44,10 @@ Input infix expression (q = quit): A+B*C
 Infix  : A+B*C
 Postfix: A B C * +
 
-Input infix expression (q = quit): (A+B)*C
+Input infix expression (q = quit): 5*(10+8)+9^3
 
-Infix  : (A+B)*C
-Postfix: A B + C *
+Infix  : 5*(10+8)+9^3
+Postfix: 5 10 8 + * 9 3 ^ +
 
 Input infix expression (q = quit): q
 ```
@@ -64,13 +64,13 @@ Beberapa contoh lain:
 
 ## Cara Kerjanya
 
-### 1. Tokenizing
+### 1. Membaca operand tanpa token list
 
-`tokenize()` membaca string karakter per karakter. Huruf, angka, dan titik digabung jadi satu operand, sementara operator, kurung, dan spasi langsung dipisah. Karakter aneh di luar itu langsung memicu `IllegalArgumentException` (`Unknown character`).
+`convert()` dan `validateOrder()` membaca string infix langsung dari kiri ke kanan. Helper `isDigit()` dan `isLetter()` mengecek rentang ASCII, `isOperandChar()` menambahkan titik desimal, dan `isWhitespace()` mengenali spasi/tab/baris baru. `operandEnd()` mengembalikan indeks setelah karakter terakhir operand, sehingga `12` atau `3.5` dibaca sebagai satu unit tanpa perlu `ArrayList` atau `StringBuilder`.
 
 ### 2. Validasi urutan
 
-`validateOrder()` memakai satu flag `expectingOperand` yang berganti-ganti: setelah operand harusnya operator, setelah operator harusnya operand. Dengan begitu ekspresi yang strukturnya rusak bisa ditolak lebih awal.
+`validateOrder()` memakai satu flag `expectingOperand` yang berganti-ganti: setelah operand harusnya operator/kurung tutup, setelah operator harusnya operand, dan setelah kurung buka harusnya operand. Pelanggaran dilaporkan lewat helper `misplaced()`. Flag `hasToken` menolak input kosong, dan pengecekan terakhir menolak ekspresi yang berakhir dengan operator atau kurung buka.
 
 ### 3. Konversi (shunting-yard)
 
@@ -83,6 +83,8 @@ Inti algoritmanya ada di `convert()`:
 - Di akhir, semua isi stack dikeluarkan. Kalau masih ada kurung buka di situ, berarti kurungnya tidak pernah ditutup.
 
 Prioritas operator: `^` paling tinggi (3), lalu `*` dan `/` (2), lalu `+` dan `-` (1). Untuk `^` dipakai aturan right-associative, jadi `A^B^C` dibaca `A^(B^C)`, bukan `(A^B)^C`.
+
+Output postfix dirapikan dengan `removeTrailingSpace()`, yang hanya memakai `charAt()` dan `substring()`.
 
 ## Error yang Ditangani
 

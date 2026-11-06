@@ -13,7 +13,7 @@ public class Main {
                     break;
                 }
                 String expression = scanner.nextLine().trim();
-                if (expression.equalsIgnoreCase("q")) {
+                if (expression.equals("q") || expression.equals("Q")) {
                     break;
                 }
                 try {
