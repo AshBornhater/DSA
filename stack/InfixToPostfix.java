@@ -118,10 +118,25 @@ public class InfixToPostfix {
     }
 
     public static String convert(String infix) {
+        Queue postfix = convertToQueue(infix);
+        String result = "";
+        boolean first = true;
+
+        while (!postfix.isEmpty()) {
+            if (!first) {
+                result = result + ' ';
+            }
+            result = result + postfix.dequeue();
+            first = false;
+        }
+        return result;
+    }
+
+    public static Queue convertToQueue(String infix) {
         validateOrder(infix);
 
         Stack stack = new Stack();
-        String postfix = "";
+        Queue postfix = new Queue();
         int i = 0;
 
         while (i < infix.length()) {
@@ -132,7 +147,7 @@ public class InfixToPostfix {
 
             } else if (isOperandChar(c)) {
                 int end = operandEnd(infix, i);
-                postfix = postfix + infix.substring(i, end) + ' ';
+                postfix.enqueue(infix.substring(i, end));
                 i = end;
 
             } else if (isOpening(c)) {
@@ -141,7 +156,7 @@ public class InfixToPostfix {
 
             } else if (isClosing(c)) {
                 while (!stack.isEmpty() && !isOpening(stack.peek())) {
-                    postfix = postfix + stack.pop() + ' ';
+                    postfix.enqueue("" + stack.pop());
                 }
                 if (stack.isEmpty()) {
                     throw new IllegalArgumentException(
@@ -156,7 +171,7 @@ public class InfixToPostfix {
 
             } else {
                 while (!stack.isEmpty() && shouldPop(c, stack.peek())) {
-                    postfix = postfix + stack.pop() + ' ';
+                    postfix.enqueue("" + stack.pop());
                 }
                 stack.push(c);
                 i++;
@@ -169,17 +184,9 @@ public class InfixToPostfix {
                 throw new IllegalArgumentException("Opening bracket '"
                         + remaining + "' has no match.");
             }
-            postfix = postfix + remaining + ' ';
+            postfix.enqueue("" + remaining);
         }
 
-        return removeTrailingSpace(postfix);
-    }
-
-    private static String removeTrailingSpace(String text) {
-        int end = text.length();
-        while (end > 0 && text.charAt(end - 1) == ' ') {
-            end--;
-        }
-        return text.substring(0, end);
+        return postfix;
     }
 }
