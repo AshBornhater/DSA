@@ -21,7 +21,7 @@ Each sorting class has separate methods for each type. There are no generic type
 Compile everything:
 
 ```
-javac *.java LinkedList/*.java
+javac -d *.java LinkedList/*.java
 ```
 
 Run the program:
